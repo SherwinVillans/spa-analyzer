@@ -4,14 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spa Water Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
-    body { font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; margin: 0; }
-    h1 { text-align: center; color: #38bdf8; font-size: 1.5rem; }
-    .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #334155; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; margin: 0; }
+    h1 { text-align: center; color: #38bdf8; font-size: 1.5rem; margin-bottom: 20px; }
+    .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     input[type="text"], input[type="file"] { width: 100%; padding: 10px; margin-top: 8px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; box-sizing: border-box; }
     button { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; }
     button:disabled { background: #64748b; }
-    #output { white-space: pre-wrap; font-family: monospace; background: #0f172a; padding: 12px; border-radius: 8px; margin-top: 16px; font-size: 0.9rem; line-height: 1.4; border: 1px solid #334155; }
+    
+    /* Pretty Report Formatting */
+    #output { background: #1e293b; padding: 20px; border-radius: 12px; margin-top: 16px; border: 1px solid #38bdf8; color: #f8fafc; font-size: 0.95rem; line-height: 1.6; }
+    #output h2, #output h3 { color: #38bdf8; margin-top: 0; }
+    #output table { width: 100%; border-collapse: collapse; margin: 16px 0; background: #0f172a; border-radius: 8px; overflow: hidden; }
+    #output th { background: #0284c7; color: #ffffff; text-align: left; padding: 10px; font-size: 0.85rem; }
+    #output td { padding: 10px; border-bottom: 1px solid #334155; font-size: 0.85rem; }
+    #output tr:last-child td { border-bottom: none; }
+    #output ol, #output ul { padding-left: 20px; margin: 10px 0; }
+    #output li { margin-bottom: 8px; }
+
     .affiliate-section { margin-top: 20px; text-align: center; }
     .buy-btn { display: inline-block; background: #f59e0b; color: #000; text-decoration: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; margin: 6px 0; }
     .disclosure { font-size: 0.75rem; color: #94a3b8; margin-top: 12px; }
@@ -53,7 +64,7 @@
       btn.disabled = true;
       btn.innerText = 'Analyzing Image...';
       outputDiv.style.display = 'block';
-      outputDiv.innerText = 'Processing visual data with Gemini...';
+      outputDiv.innerHTML = '<em>Processing visual data with Gemini...</em>';
 
       const file = fileInput.files[0];
       const base64Image = await convertToBase64(file);
@@ -62,13 +73,14 @@
 Rules:
 1. Ignore any Bromine pads/readings entirely; the spa uses Chlorine.
 2. Base all values strictly on visual pad color comparisons.
-3. Generate the report using this exact structure:
+3. Generate the report using markdown:
 
-SPA WATER ANALYSIS REPORT
-STATUS: [OVERALL STATUS SUMMARY]
+### SPA WATER ANALYSIS REPORT
+**STATUS:** [OVERALL STATUS SUMMARY]
 
-READING BREAKDOWN:
-| PARAMETER | READING (PPM) | STATUS | IDEAL RANGE (PPM) |
+#### READING BREAKDOWN
+| PARAMETER | READING | STATUS | IDEAL RANGE |
+| :--- | :--- | :--- | :--- |
 | Total Hardness | [Value] ppm | [Status] | 150–250 ppm |
 | Free Chlorine | [Value] ppm | [Status] | 3.0–5.0 ppm |
 | Total Chlorine | [Value] ppm | [Status] | Matches Free Chlorine |
@@ -76,10 +88,10 @@ READING BREAKDOWN:
 | Total Alkalinity | [Value] ppm | [Status] | 80–120 ppm |
 | pH Level | [Value] | [Status] | 7.2–7.8 |
 
-PRIORITY ACTION PLAN:
-1. [STEP 1 TITLE] - [Details/Dosing]
-2. [STEP 2 TITLE] - [Details/Dosing]
-3. [STEP 3 TITLE] - [Details/Dosing]`;
+#### PRIORITY ACTION PLAN
+1. **[STEP 1 TITLE]** - [Details/Dosing]
+2. **[STEP 2 TITLE]** - [Details/Dosing]
+3. **[STEP 3 TITLE]** - [Details/Dosing]`;
 
       const payload = {
         system_instruction: { parts: [{ text: systemPrompt }] },
@@ -100,7 +112,8 @@ PRIORITY ACTION PLAN:
 
         const data = await response.json();
         if (data.candidates && data.candidates[0].content.parts[0].text) {
-          outputDiv.innerText = data.candidates[0].content.parts[0].text;
+          const rawMarkdown = data.candidates[0].content.parts[0].text;
+          outputDiv.innerHTML = marked.parse(rawMarkdown);
         } else {
           outputDiv.innerText = 'Error: Unexpected response format.\n' + JSON.stringify(data, null, 2);
         }
