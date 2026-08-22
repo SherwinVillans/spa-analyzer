@@ -150,7 +150,7 @@
       <tbody id="tableBody"></tbody>
     </table>
 
-    <div class="section-title">⚖️ Estimated Chemical Dosages</div>
+    <div class="section-title">⚖️ SpaGuard® Chemical Dosages</div>
     <div id="dosageSummary" class="dosage-box">Calculating dosage requirements...</div>
 
     <div class="section-title">🛠️ Priority Action Plan</div>
@@ -214,7 +214,7 @@
         "📸 Processing image data...",
         "🧪 Extracting test strip pads...",
         "⚖️ Measuring pH & Free Chlorine...",
-        "🧮 Calculating gallon chemical dosages...",
+        "🧮 Calculating SpaGuard chemical dosages...",
         "📋 Generating action plan..."
       ];
       
@@ -273,6 +273,13 @@
       const base64Image = await convertToBase64(selectedFile);
 
       const systemPrompt = `Analyze the uploaded spa water test strip photo for a ${gallons}-gallon spa. Respond strictly in valid JSON format without markdown code fences.
+When making chemical dosage and action plan recommendations, strictly use official SpaGuard product names and standard dosage rates tailored for ${gallons} gallons:
+- For low pH: "SpaGuard pH Increaser"
+- For high pH: "SpaGuard pH Decreaser"
+- For low alkalinity: "SpaGuard Total Alkalinity Increaser"
+- For low sanitizer/chlorine: "SpaGuard Chlorinating Concentrate" or "SpaGuard Enhanced Shock"
+- For low hardness: "SpaGuard Calcium Hardness Increaser"
+
 Return JSON with this exact schema:
 {
   "status": "STATUS SUMMARY HERE",
@@ -285,13 +292,11 @@ Return JSON with this exact schema:
     {"parameter": "pH Level", "reading": "6.8", "status": "LOW", "ideal": "7.2–7.8"}
   ],
   "dosage_recommendations": [
-    "Dosage instruction 1 calculated for ${gallons} gallons",
-    "Dosage instruction 2 calculated for ${gallons} gallons"
+    "Add [X oz / tbsp] of SpaGuard [Product Name] calculated for ${gallons} gallons",
+    "Add [X oz / tbsp] of SpaGuard [Product Name] calculated for ${gallons} gallons"
   ],
   "actions": [
-    {"title": "LOWER CHLORINE", "detail": "Details here..."},
-    {"title": "RAISE ALKALINITY", "detail": "Details here..."},
-    {"title": "ADJUST PH LEVEL", "detail": "Details here..."}
+    {"title": "ACTION TITLE HERE", "detail": "Details specifying SpaGuard product name and steps..."}
   ]
 }`;
 
