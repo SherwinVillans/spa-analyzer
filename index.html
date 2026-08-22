@@ -42,6 +42,36 @@
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .loading-text { font-size: 0.95rem; font-weight: bold; color: #38bdf8; }
 
+    /* Live Camera Modal & Overlay Guides */
+    #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 3000; flex-direction: column; }
+    .camera-container { position: relative; flex: 1; width: 100%; height: 100%; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+    #cameraFeed { width: 100%; height: 100%; object-fit: cover; }
+    
+    .viewfinder-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle, rgba(15,23,42,0.2) 50%, rgba(15,23,42,0.85) 85%);
+      display: flex; justify-content: center; align-items: center; gap: 16px; box-sizing: border-box; padding: 20px;
+    }
+
+    .guide-box {
+      border: 3px dashed #38bdf8; border-radius: 12px;
+      display: flex; justify-content: center; align-items: center; text-align: center;
+      background: rgba(15, 23, 42, 0.3); font-weight: 800; font-size: 0.75rem; color: #38bdf8;
+      text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+    }
+    .guide-bottle { width: 160px; height: 320px; }
+    .guide-strip { width: 50px; height: 320px; }
+
+    .camera-controls {
+      height: 120px; background: #0f172a; display: flex; justify-content: space-around; align-items: center; padding: 0 20px;
+    }
+    .shutter-btn {
+      width: 68px; height: 68px; border-radius: 50%; background: #0284c7; border: 4px solid #ffffff; cursor: pointer;
+    }
+    .shutter-btn:active { transform: scale(0.92); background: #38bdf8; }
+    .cancel-camera-btn { background: #ef4444; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
     /* Slide Panel Drawer Styling */
     .slide-panel { position: fixed; top: 0; right: -100%; width: 100%; max-width: 420px; height: 100%; background: #1e293b; box-shadow: -5px 0 25px rgba(0,0,0,0.5); transition: right 0.3s ease-in-out; z-index: 1000; padding: 20px; box-sizing: border-box; overflow-y: auto; }
     .slide-panel.active { right: 0; }
@@ -96,18 +126,33 @@
     <label>Capture or Choose Test Strip Photo:</label>
     <div style="margin-top: 10px;">
       <div class="button-group">
-        <button type="button" class="photo-btn" onclick="document.getElementById('cameraInput').click()">📷 Take Photo</button>
+        <button type="button" class="photo-btn" onclick="openCameraOverlay()">📷 Take Photo</button>
         <button type="button" class="photo-btn" onclick="document.getElementById('galleryInput').click()">🖼️ Choose File</button>
       </div>
       <div id="fileStatus" style="font-size:0.85rem; color:#94a3b8; margin-bottom:12px; text-align:center;">No photo selected</div>
     </div>
 
-    <!-- Hidden File Inputs -->
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" onchange="handleFileSelect(this)" />
+    <!-- Hidden Gallery Input & Canvas -->
     <input type="file" id="galleryInput" accept="image/*" style="display:none;" onchange="handleFileSelect(this)" />
+    <canvas id="captureCanvas" style="display:none;"></canvas>
 
     <button id="analyzeBtn" class="primary-btn" onclick="analyzeStrip()">Analyze Test Strip</button>
     <button class="trend-btn" onclick="toggleTrendPanel(true)">📈 View 5-Test Trend Graph</button>
+  </div>
+
+  <!-- Live Camera Modal with Dual Alignment Viewfinder Overlay -->
+  <div id="cameraModal">
+    <div class="camera-container">
+      <video id="cameraFeed" autoplay playsinline muted></video>
+      <div class="viewfinder-overlay">
+        <div class="guide-box guide-bottle">Align Bottle<br>Color Chart</div>
+        <div class="guide-box guide-strip">Align<br>Test<br>Strip</div>
+      </div>
+    </div>
+    <div class="camera-controls">
+      <button class="cancel-camera-btn" onclick="closeCameraOverlay()">Cancel</button>
+      <div class="shutter-btn" onclick="captureOverlayPhoto()"></div>
+    </div>
   </div>
 
   <!-- Animated Loading Card -->
@@ -180,6 +225,7 @@
     let selectedFile = null;
     let trendChartInstance = null;
     let loadingInterval = null;
+    let mediaStream = null;
 
     window.addEventListener('DOMContentLoaded', () => {
       const savedGal = localStorage.getItem('spa_volume_gallons');
@@ -203,6 +249,48 @@
         selectedFile = input.files[0];
         document.getElementById('fileStatus').innerText = 'Selected: ' + selectedFile.name;
       }
+    }
+
+    /* Live Camera Overlay Logic */
+    async function openCameraOverlay() {
+      const cameraModal = document.getElementById('cameraModal');
+      const video = document.getElementById('cameraFeed');
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
+        });
+        video.srcObject = mediaStream;
+        cameraModal.style.display = 'flex';
+      } catch (err) {
+        alert('Camera Access Denied or Unavailable: ' + err.message);
+      }
+    }
+
+    function closeCameraOverlay() {
+      const cameraModal = document.getElementById('cameraModal');
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      cameraModal.style.display = 'none';
+    }
+
+    function captureOverlayPhoto() {
+      const video = document.getElementById('cameraFeed');
+      const canvas = document.getElementById('captureCanvas');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        selectedFile = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+        document.getElementById('fileStatus').innerText = 'Captured: Camera Snapshot';
+        closeCameraOverlay();
+      }, 'image/jpeg', 0.95);
     }
 
     function startLoadingAnimation() {
@@ -256,7 +344,6 @@ When making recommendations, strictly use official SpaGuard product names and pr
 - Low Sanitizer/Chlorine: "SpaGuard Chlorinating Concentrate" or "SpaGuard Enhanced Shock"
 - Low Hardness: "SpaGuard Calcium Hardness Increaser"`;
 
-      // Payload configured with explicit response_schema to guarantee an array under readings
       const payload = {
         system_instruction: { parts: [{ text: systemPrompt }] },
         generationConfig: {
