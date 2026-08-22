@@ -256,11 +256,46 @@ When making recommendations, strictly use official SpaGuard product names and pr
 - Low Sanitizer/Chlorine: "SpaGuard Chlorinating Concentrate" or "SpaGuard Enhanced Shock"
 - Low Hardness: "SpaGuard Calcium Hardness Increaser"`;
 
-      // Optimized request payload targeting gemini-3.7-flash with strict JSON mode
+      // Payload configured with explicit response_schema to guarantee an array under readings
       const payload = {
         system_instruction: { parts: [{ text: systemPrompt }] },
         generationConfig: {
-          response_mime_type: "application/json"
+          response_mime_type: "application/json",
+          response_schema: {
+            type: "OBJECT",
+            properties: {
+              status: { type: "STRING" },
+              readings: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    parameter: { type: "STRING" },
+                    reading: { type: "STRING" },
+                    status: { type: "STRING" },
+                    ideal: { type: "STRING" }
+                  },
+                  required: ["parameter", "reading", "status", "ideal"]
+                }
+              },
+              dosage_recommendations: {
+                type: "ARRAY",
+                items: { type: "STRING" }
+              },
+              actions: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    title: { type: "STRING" },
+                    detail: { type: "STRING" }
+                  },
+                  required: ["title", "detail"]
+                }
+              }
+            },
+            required: ["status", "readings", "dosage_recommendations", "actions"]
+          }
         },
         contents: [{
           parts: [
@@ -303,12 +338,13 @@ When making recommendations, strictly use official SpaGuard product names and pr
 
     function saveTestToHistory(data) {
       let history = JSON.parse(localStorage.getItem('spa_test_history') || '[]');
+      const readings = Array.isArray(data.readings) ? data.readings : [];
       
       const newEntry = {
         date: new Date().toLocaleDateString([], { month: 'numeric', day: 'numeric' }),
-        ph: parseFloat((data.readings.find(r => r.parameter && r.parameter.includes('pH')) || {}).reading) || 0,
-        chlorine: parseFloat((data.readings.find(r => r.parameter && r.parameter.includes('Free Chlorine')) || {}).reading) || 0,
-        alkalinity: parseFloat((data.readings.find(r => r.parameter && r.parameter.includes('Alkalinity')) || {}).reading) || 0
+        ph: parseFloat((readings.find(r => r.parameter && r.parameter.includes('pH')) || {}).reading) || 0,
+        chlorine: parseFloat((readings.find(r => r.parameter && r.parameter.includes('Free Chlorine')) || {}).reading) || 0,
+        alkalinity: parseFloat((readings.find(r => r.parameter && r.parameter.includes('Alkalinity')) || {}).reading) || 0
       };
 
       history.push(newEntry);
@@ -376,7 +412,7 @@ When making recommendations, strictly use official SpaGuard product names and pr
 
       const tbody = document.getElementById('tableBody');
       tbody.innerHTML = '';
-      if (data.readings) {
+      if (Array.isArray(data.readings)) {
         data.readings.forEach(item => {
           let badgeClass = 'badge-ok';
           const st = (item.status || '').toUpperCase();
@@ -394,7 +430,7 @@ When making recommendations, strictly use official SpaGuard product names and pr
       }
 
       const dosageDiv = document.getElementById('dosageSummary');
-      if (data.dosage_recommendations && data.dosage_recommendations.length > 0) {
+      if (Array.isArray(data.dosage_recommendations) && data.dosage_recommendations.length > 0) {
         dosageDiv.innerHTML = data.dosage_recommendations.map(d => `• <strong>${d}</strong>`).join('<br>');
       } else {
         dosageDiv.innerHTML = "• <strong>No immediate chemical additions required based on current levels.</strong>";
@@ -402,7 +438,7 @@ When making recommendations, strictly use official SpaGuard product names and pr
 
       const actionDiv = document.getElementById('actionPlan');
       actionDiv.innerHTML = '';
-      if (data.actions) {
+      if (Array.isArray(data.actions)) {
         data.actions.forEach((act, idx) => {
           actionDiv.innerHTML += `
             <div class="action-step">
