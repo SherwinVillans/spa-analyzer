@@ -10,6 +10,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3105/3105807.png">
+  
+  <!-- html2canvas Library for Image Conversion -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; margin: 0; }
     h1 { text-align: center; color: #38bdf8; font-size: 1.5rem; margin-bottom: 20px; }
@@ -115,7 +119,7 @@
     <div class="section-title">🛠️ Priority Action Plan</div>
     <div id="actionPlan"></div>
 
-    <button class="share-btn" onclick="shareReport()">📤 Share Report</button>
+    <button id="shareBtn" class="share-btn" onclick="shareReportImage()">🖼️ Share Report Image</button>
   </div>
 
   <!-- Monetized Chemical Reordering Section -->
@@ -139,7 +143,6 @@
   <script>
     const ENCODED_KEY = "QVEuQWI4Uk42SlpLX2xHaTVGZWxlZDFtZ1JvU2V3aEN2QV93U3BMNm16V09QdVUtQWJZN1E=";
     let selectedFile = null;
-    let currentReportData = null;
 
     // Load saved volume preference on launch
     window.addEventListener('DOMContentLoaded', () => {
@@ -223,9 +226,9 @@ Return JSON with this exact schema:
         const data = await response.json();
         let rawText = data.candidates[0].content.parts[0].text;
         rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        currentReportData = JSON.parse(rawText);
+        const parsed = JSON.parse(rawText);
 
-        renderGraphicalReport(currentReportData);
+        renderGraphicalReport(parsed);
       } catch (err) {
         alert('Analysis Error: ' + err.message);
       } finally {
@@ -279,51 +282,37 @@ Return JSON with this exact schema:
       document.getElementById('reportCard').style.display = 'block';
     }
 
-    async function shareReport() {
-      if (!currentReportData) return;
+    async function shareReportImage() {
+      const shareBtn = document.getElementById('shareBtn');
+      const reportElement = document.getElementById('reportCard');
 
-      const gallons = document.getElementById('spaGallons').value || '350';
-      let summaryText = `💧 SPA WATER ANALYSIS REPORT (${gallons} Gal)\n`;
-      summaryText += `Status: ${currentReportData.status}\n\n`;
+      // Hide the share button temporarily so it isn't included in the picture
+      shareBtn.style.display = 'none';
 
-      summaryText += `📊 READINGS:\n`;
-      currentReportData.readings.forEach(r => {
-        summaryText += `- ${r.parameter}: ${r.reading} (${r.status})\n`;
-      });
+      try {
+        const canvas = await html2canvas(reportElement, { scale: 2 });
+        shareBtn.style.display = 'block';
 
-      if (currentReportData.dosage_recommendations && currentReportData.dosage_recommendations.length > 0) {
-        summaryText += `\n⚖️ DOSAGES:\n`;
-        currentReportData.dosage_recommendations.forEach(d => {
-          summaryText += `- ${d}\n`;
-        });
+        canvas.toBlob(async (blob) => {
+          const file = new File([blob], 'spa-water-report.png', { type: 'image/png' });
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: 'Spa Water Report',
+              files: [file]
+            });
+          } else {
+            // Download fallback for browsers that don't support file sharing directly
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'spa-water-report.png';
+            a.click();
+          }
+        }, 'image/png');
+      } catch (err) {
+        shareBtn.style.display = 'block';
+        alert('Could not generate image: ' + err.message);
       }
-
-      summaryText += `\n🛠️ ACTION PLAN:\n`;
-      currentReportData.actions.forEach((a, i) => {
-        summaryText += `${i + 1}. ${a.title}: ${a.detail}\n`;
-      });
-
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: 'Spa Water Analysis Report',
-            text: summaryText
-          });
-        } catch (err) {
-          // Fallback to clipboard if user cancels or share fails
-          copyToClipboard(summaryText);
-        }
-      } else {
-        copyToClipboard(summaryText);
-      }
-    }
-
-    function copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        alert('Report copied to clipboard!');
-      }).catch(() => {
-        alert('Unable to copy report.');
-      });
     }
 
     function convertToBase64(file) {
