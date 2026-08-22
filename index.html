@@ -188,7 +188,7 @@
     }
 
     async function fetchWithFallback(payload, apiKey) {
-      const models = ['gemini-3.7-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+      const models = ['gemini-2.5-flash', 'gemini-3.7-flash'];
       let lastError = null;
 
       for (const model of models) {
@@ -208,7 +208,7 @@
           lastError = e.message;
         }
       }
-      throw new Error(lastError || 'High traffic on API servers. Please retry in a few seconds.');
+      throw new Error(lastError || 'Server busy. Please try again in a few seconds.');
     }
 
     async function analyzeStrip() {
@@ -286,7 +286,7 @@ Return JSON with this exact schema:
       };
 
       history.push(newEntry);
-      if (history.length > 5) history.shift(); // Keep last 5 entries
+      if (history.length > 5) history.shift();
       localStorage.setItem('spa_test_history', JSON.stringify(history));
     }
 
