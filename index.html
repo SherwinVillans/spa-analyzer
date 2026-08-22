@@ -106,9 +106,17 @@
     .dosage-box { background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 12px; margin-bottom: 18px; font-size: 0.85rem; color: #0369a1; }
     .dosage-box strong { color: #0c4a6e; }
 
+    /* Dynamic Contextual Affiliate Buttons */
+    .contextual-buy-btn {
+      display: inline-block; background: #f59e0b; color: #000; text-decoration: none;
+      padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.8rem;
+      margin-top: 6px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .contextual-buy-btn:active { background: #d97706; }
+
     .report-copyright { text-align: center; font-size: 0.75rem; color: #64748b; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-weight: 500; }
 
-    /* Single Curated Amazon Section */
+    /* General Amazon Section */
     .affiliate-section { margin-top: 20px; text-align: center; }
     .buy-btn-primary { display: block; width: 100%; box-sizing: border-box; background: #f59e0b; color: #000; text-decoration: none; padding: 14px 16px; border-radius: 8px; font-weight: bold; margin: 12px 0 8px 0; font-size: 1rem; text-align: center; }
     .disclosure { font-size: 0.75rem; color: #94a3b8; margin-top: 8px; }
@@ -491,6 +499,12 @@ When making recommendations, strictly use official SpaGuard product names and pr
       });
     }
 
+    // Dynamic Amazon Product Link Helper
+    function getContextualAmazonLink(productQuery) {
+      const encoded = encodeURIComponent(productQuery);
+      return `https://www.amazon.com/s?k=${encoded}&tag=fastchem-20`;
+    }
+
     function renderGraphicalReport(data) {
       const now = new Date();
       document.getElementById('reportTimestamp').innerText = 'Generated: ' + now.toLocaleDateString() + ' at ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -518,7 +532,23 @@ When making recommendations, strictly use official SpaGuard product names and pr
 
       const dosageDiv = document.getElementById('dosageSummary');
       if (Array.isArray(data.dosage_recommendations) && data.dosage_recommendations.length > 0) {
-        dosageDiv.innerHTML = data.dosage_recommendations.map(d => `• <strong>${d}</strong>`).join('<br>');
+        let dosageHtml = '';
+        data.dosage_recommendations.forEach(d => {
+          dosageHtml += `• <strong>${d}</strong><br>`;
+          // Dynamically attach specific affiliate buy button when a product is mentioned
+          if (d.includes('pH Increaser')) {
+            dosageHtml += `<a href="${getContextualAmazonLink('SpaGuard pH Increaser')}" target="_blank" class="contextual-buy-btn">🛒 Buy SpaGuard pH Increaser</a><br><br>`;
+          } else if (d.includes('pH Decreaser')) {
+            dosageHtml += `<a href="${getContextualAmazonLink('SpaGuard pH Decreaser')}" target="_blank" class="contextual-buy-btn">🛒 Buy SpaGuard pH Decreaser</a><br><br>`;
+          } else if (d.includes('Total Alkalinity Increaser')) {
+            dosageHtml += `<a href="${getContextualAmazonLink('SpaGuard Total Alkalinity Increaser')}" target="_blank" class="contextual-buy-btn">🛒 Buy SpaGuard Alkalinity Increaser</a><br><br>`;
+          } else if (d.includes('Chlorinating Concentrate') || d.includes('Enhanced Shock')) {
+            dosageHtml += `<a href="${getContextualAmazonLink('SpaGuard Chlorinating Concentrate')}" target="_blank" class="contextual-buy-btn">🛒 Buy SpaGuard Chlorine Shock</a><br><br>`;
+          } else if (d.includes('Calcium Hardness Increaser')) {
+            dosageHtml += `<a href="${getContextualAmazonLink('SpaGuard Calcium Hardness Increaser')}" target="_blank" class="contextual-buy-btn">🛒 Buy SpaGuard Hardness Increaser</a><br><br>`;
+          }
+        });
+        dosageDiv.innerHTML = dosageHtml;
       } else {
         dosageDiv.innerHTML = "• <strong>No immediate chemical additions required based on current levels.</strong>";
       }
