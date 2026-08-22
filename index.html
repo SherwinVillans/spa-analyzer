@@ -36,6 +36,12 @@
     button.trend-btn { width: 100%; padding: 12px; background: #8b5cf6; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin-top: 8px; }
     button.share-btn { width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin-top: 16px; }
 
+    /* Loading Spinner & Status Animation */
+    #loadingCard { display: none; text-align: center; padding: 24px 16px; background: #1e293b; border-radius: 12px; border: 1px solid #0284c7; margin-bottom: 16px; }
+    .spinner { width: 44px; height: 44px; border: 4px solid #334155; border-top: 4px solid #38bdf8; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading-text { font-size: 0.95rem; font-weight: bold; color: #38bdf8; }
+
     /* Slide Panel Drawer Styling */
     .slide-panel { position: fixed; top: 0; right: -100%; width: 100%; max-width: 420px; height: 100%; background: #1e293b; box-shadow: -5px 0 25px rgba(0,0,0,0.5); transition: right 0.3s ease-in-out; z-index: 1000; padding: 20px; box-sizing: border-box; overflow-y: auto; }
     .slide-panel.active { right: 0; }
@@ -103,6 +109,12 @@
 
     <button id="analyzeBtn" class="primary-btn" onclick="analyzeStrip()">Analyze Test Strip</button>
     <button class="trend-btn" onclick="toggleTrendPanel(true)">📈 View 5-Test Trend Graph</button>
+  </div>
+
+  <!-- Animated Loading Card -->
+  <div id="loadingCard">
+    <div class="spinner"></div>
+    <div id="loadingText" class="loading-text">Analyzing photo...</div>
   </div>
 
   <!-- Slide-In Overlay & Panel -->
@@ -174,6 +186,7 @@
     const ENCODED_KEY = "QVEuQWI4Uk42SlpLX2xHaTVGZWxlZDFtZ1JvU2V3aEN2QV93U3BMNm16V09QdVUtQWJZN1E=";
     let selectedFile = null;
     let trendChartInstance = null;
+    let loadingInterval = null;
 
     window.addEventListener('DOMContentLoaded', () => {
       const savedGal = localStorage.getItem('spa_volume_gallons');
@@ -197,6 +210,33 @@
         selectedFile = input.files[0];
         document.getElementById('fileStatus').innerText = 'Selected: ' + selectedFile.name;
       }
+    }
+
+    function startLoadingAnimation() {
+      const loadingCard = document.getElementById('loadingCard');
+      const loadingText = document.getElementById('loadingText');
+      loadingCard.style.display = 'block';
+
+      const messages = [
+        "📸 Processing image data...",
+        "🧪 Extracting test strip pads...",
+        "⚖️ Measuring pH & Free Chlorine...",
+        "🧮 Calculating gallon chemical dosages...",
+        "📋 Generating action plan..."
+      ];
+      
+      let index = 0;
+      loadingText.innerText = messages[0];
+      
+      loadingInterval = setInterval(() => {
+        index = (index + 1) % messages.length;
+        loadingText.innerText = messages[index];
+      }, 1500);
+    }
+
+    function stopLoadingAnimation() {
+      clearInterval(loadingInterval);
+      document.getElementById('loadingCard').style.display = 'none';
     }
 
     async function fetchWithFallback(payload, apiKey) {
@@ -235,6 +275,7 @@
       btn.disabled = true;
       btn.innerText = 'Analyzing Image...';
       reportCard.style.display = 'none';
+      startLoadingAnimation();
 
       const base64Image = await convertToBase64(selectedFile);
 
@@ -282,6 +323,7 @@ Return JSON with this exact schema:
       } catch (err) {
         alert('Analysis Error: ' + err.message);
       } finally {
+        stopLoadingAnimation();
         btn.disabled = false;
         btn.innerText = 'Analyze Test Strip';
       }
