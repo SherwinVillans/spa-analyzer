@@ -25,6 +25,7 @@
     
     button.primary-btn { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; }
     button.primary-btn:disabled { background: #64748b; }
+    button.share-btn { width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin-top: 16px; }
 
     /* Graphical Infographic Card */
     #reportCard { background: #f8fafc; color: #0f172a; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); margin-top: 20px; border: 2px solid #38bdf8; display: none; }
@@ -113,6 +114,8 @@
 
     <div class="section-title">🛠️ Priority Action Plan</div>
     <div id="actionPlan"></div>
+
+    <button class="share-btn" onclick="shareReport()">📤 Share Report</button>
   </div>
 
   <!-- Monetized Chemical Reordering Section -->
@@ -136,6 +139,7 @@
   <script>
     const ENCODED_KEY = "QVEuQWI4Uk42SlpLX2xHaTVGZWxlZDFtZ1JvU2V3aEN2QV93U3BMNm16V09QdVUtQWJZN1E=";
     let selectedFile = null;
+    let currentReportData = null;
 
     // Load saved volume preference on launch
     window.addEventListener('DOMContentLoaded', () => {
@@ -219,9 +223,9 @@ Return JSON with this exact schema:
         const data = await response.json();
         let rawText = data.candidates[0].content.parts[0].text;
         rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(rawText);
+        currentReportData = JSON.parse(rawText);
 
-        renderGraphicalReport(parsed);
+        renderGraphicalReport(currentReportData);
       } catch (err) {
         alert('Analysis Error: ' + err.message);
       } finally {
@@ -273,6 +277,53 @@ Return JSON with this exact schema:
       });
 
       document.getElementById('reportCard').style.display = 'block';
+    }
+
+    async function shareReport() {
+      if (!currentReportData) return;
+
+      const gallons = document.getElementById('spaGallons').value || '350';
+      let summaryText = `💧 SPA WATER ANALYSIS REPORT (${gallons} Gal)\n`;
+      summaryText += `Status: ${currentReportData.status}\n\n`;
+
+      summaryText += `📊 READINGS:\n`;
+      currentReportData.readings.forEach(r => {
+        summaryText += `- ${r.parameter}: ${r.reading} (${r.status})\n`;
+      });
+
+      if (currentReportData.dosage_recommendations && currentReportData.dosage_recommendations.length > 0) {
+        summaryText += `\n⚖️ DOSAGES:\n`;
+        currentReportData.dosage_recommendations.forEach(d => {
+          summaryText += `- ${d}\n`;
+        });
+      }
+
+      summaryText += `\n🛠️ ACTION PLAN:\n`;
+      currentReportData.actions.forEach((a, i) => {
+        summaryText += `${i + 1}. ${a.title}: ${a.detail}\n`;
+      });
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Spa Water Analysis Report',
+            text: summaryText
+          });
+        } catch (err) {
+          // Fallback to clipboard if user cancels or share fails
+          copyToClipboard(summaryText);
+        }
+      } else {
+        copyToClipboard(summaryText);
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Report copied to clipboard!');
+      }).catch(() => {
+        alert('Unable to copy report.');
+      });
     }
 
     function convertToBase64(file) {
