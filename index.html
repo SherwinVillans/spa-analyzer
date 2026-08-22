@@ -11,8 +11,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3105/3105807.png">
   
-  <!-- html2canvas Library for Image Conversion -->
+  <!-- html2canvas Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Chart.js for Trend Graphing -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; margin: 0; }
@@ -29,7 +31,15 @@
     
     button.primary-btn { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; }
     button.primary-btn:disabled { background: #64748b; }
+    button.trend-btn { width: 100%; padding: 12px; background: #8b5cf6; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin-top: 8px; }
     button.share-btn { width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin-top: 16px; }
+
+    /* Slide Panel Drawer Styling */
+    .slide-panel { position: fixed; top: 0; right: -100%; width: 100%; max-width: 420px; height: 100%; background: #1e293b; box-shadow: -5px 0 25px rgba(0,0,0,0.5); transition: right 0.3s ease-in-out; z-index: 1000; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+    .slide-panel.active { right: 0; }
+    .panel-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; z-index: 999; }
+    .panel-overlay.active { display: block; }
+    .close-panel-btn { background: #ef4444; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; float: right; }
 
     /* Graphical Infographic Card */
     #reportCard { background: #f8fafc; color: #0f172a; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); margin-top: 20px; border: 2px solid #38bdf8; display: none; }
@@ -37,7 +47,6 @@
     .report-title { color: #0284c7; font-size: 1.4rem; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
     
     .status-banner { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 10px 14px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
-    
     .section-title { font-size: 1rem; font-weight: 800; color: #1e293b; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; border-bottom: 2px solid #0284c7; padding-bottom: 4px; }
     
     /* Table Styling */
@@ -45,19 +54,16 @@
     .data-table th { background: #e2e8f0; color: #334155; font-weight: bold; text-align: left; padding: 8px; border: 1px solid #cbd5e1; }
     .data-table td { padding: 8px; border: 1px solid #cbd5e1; font-weight: 600; }
     
-    /* Dynamic Badges */
     .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; color: #fff; text-align: center; }
     .badge-ok { background: #10b981; }
     .badge-warn { background: #f59e0b; }
     .badge-danger { background: #ef4444; }
 
-    /* Action Plan Number Bubbles */
     .action-step { display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start; }
     .step-number { background: #0284c7; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; font-size: 0.9rem; }
     .step-content { font-size: 0.85rem; line-height: 1.4; color: #334155; }
     .step-title { font-weight: bold; color: #0284c7; text-transform: uppercase; font-size: 0.9rem; }
     
-    /* Dosage Highlight Box */
     .dosage-box { background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 12px; margin-bottom: 18px; font-size: 0.85rem; color: #0369a1; }
     .dosage-box strong { color: #0c4a6e; }
 
@@ -90,6 +96,19 @@
     <input type="file" id="galleryInput" accept="image/*" style="display:none;" onchange="handleFileSelect(this)" />
 
     <button id="analyzeBtn" class="primary-btn" onclick="analyzeStrip()">Analyze Test Strip</button>
+    <button class="trend-btn" onclick="toggleTrendPanel(true)">📈 View 5-Test Trend Graph</button>
+  </div>
+
+  <!-- Slide-In Overlay & Panel -->
+  <div id="panelOverlay" class="panel-overlay" onclick="toggleTrendPanel(false)"></div>
+  <div id="trendPanel" class="slide-panel">
+    <button class="close-panel-btn" onclick="toggleTrendPanel(false)">✕ Close</button>
+    <h3 style="color:#38bdf8; margin-top:0;">📊 Water Trends (Last 5 Scans)</h3>
+    <p style="font-size:0.8rem; color:#94a3b8;">Track how your spa levels shift over time:</p>
+    
+    <div style="background:#0f172a; padding:12px; border-radius:10px; margin-top:16px;">
+      <canvas id="trendChart"></canvas>
+    </div>
   </div>
 
   <!-- Graphical Infographic Container -->
@@ -143,8 +162,8 @@
   <script>
     const ENCODED_KEY = "QVEuQWI4Uk42SlpLX2xHaTVGZWxlZDFtZ1JvU2V3aEN2QV93U3BMNm16V09QdVUtQWJZN1E=";
     let selectedFile = null;
+    let trendChartInstance = null;
 
-    // Load saved volume preference on launch
     window.addEventListener('DOMContentLoaded', () => {
       const savedGal = localStorage.getItem('spa_volume_gallons');
       if (savedGal) {
@@ -169,7 +188,7 @@
     }
 
     async function fetchWithFallback(payload, apiKey) {
-      const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+      const models = ['gemini-3.7-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
       let lastError = null;
 
       for (const model of models) {
@@ -246,6 +265,7 @@ Return JSON with this exact schema:
         rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(rawText);
 
+        saveTestToHistory(parsed);
         renderGraphicalReport(parsed);
       } catch (err) {
         alert('Analysis Error: ' + err.message);
@@ -255,10 +275,76 @@ Return JSON with this exact schema:
       }
     }
 
+    function saveTestToHistory(data) {
+      let history = JSON.parse(localStorage.getItem('spa_test_history') || '[]');
+      
+      const newEntry = {
+        date: new Date().toLocaleDateString([], { month: 'numeric', day: 'numeric' }),
+        ph: parseFloat((data.readings.find(r => r.parameter.includes('pH')) || {}).reading) || 0,
+        chlorine: parseFloat((data.readings.find(r => r.parameter.includes('Free Chlorine')) || {}).reading) || 0,
+        alkalinity: parseFloat((data.readings.find(r => r.parameter.includes('Alkalinity')) || {}).reading) || 0
+      };
+
+      history.push(newEntry);
+      if (history.length > 5) history.shift(); // Keep last 5 entries
+      localStorage.setItem('spa_test_history', JSON.stringify(history));
+    }
+
+    function toggleTrendPanel(show) {
+      const panel = document.getElementById('trendPanel');
+      const overlay = document.getElementById('panelOverlay');
+
+      if (show) {
+        renderTrendChart();
+        panel.classList.add('active');
+        overlay.classList.add('active');
+      } else {
+        panel.classList.remove('active');
+        overlay.classList.remove('active');
+      }
+    }
+
+    function renderTrendChart() {
+      const history = JSON.parse(localStorage.getItem('spa_test_history') || '[]');
+      const ctx = document.getElementById('trendChart').getContext('2d');
+
+      if (trendChartInstance) trendChartInstance.destroy();
+
+      if (history.length === 0) {
+        ctx.clearRect(0, 0, 300, 150);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('No history logged yet. Run a test scan!', 20, 80);
+        return;
+      }
+
+      const labels = history.map(h => h.date);
+      const phData = history.map(h => h.ph);
+      const chlorineData = history.map(h => h.chlorine);
+
+      trendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'pH Level', data: phData, borderColor: '#38bdf8', backgroundColor: '#38bdf8', tension: 0.3 },
+            { label: 'Free Chlorine (ppm)', data: chlorineData, borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.3 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#f8fafc' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+          }
+        }
+      });
+    }
+
     function renderGraphicalReport(data) {
       document.getElementById('statusBanner').innerText = '⚠️ STATUS: ' + data.status;
 
-      // Table Rendering
       const tbody = document.getElementById('tableBody');
       tbody.innerHTML = '';
       data.readings.forEach(item => {
@@ -275,7 +361,6 @@ Return JSON with this exact schema:
           </tr>`;
       });
 
-      // Dosage Summary Rendering
       const dosageDiv = document.getElementById('dosageSummary');
       if (data.dosage_recommendations && data.dosage_recommendations.length > 0) {
         dosageDiv.innerHTML = data.dosage_recommendations.map(d => `• <strong>${d}</strong>`).join('<br>');
@@ -283,7 +368,6 @@ Return JSON with this exact schema:
         dosageDiv.innerHTML = "• <strong>No immediate chemical additions required based on current levels.</strong>";
       }
 
-      // Action Plan Rendering
       const actionDiv = document.getElementById('actionPlan');
       actionDiv.innerHTML = '';
       data.actions.forEach((act, idx) => {
