@@ -4,24 +4,39 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spa Water Analyzer</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; margin: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; margin: 0; }
     h1 { text-align: center; color: #38bdf8; font-size: 1.5rem; margin-bottom: 20px; }
-    .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #334155; }
     input[type="text"], input[type="file"] { width: 100%; padding: 10px; margin-top: 8px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; box-sizing: border-box; }
     button { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; }
     button:disabled { background: #64748b; }
+
+    /* Graphical Infographic Card */
+    #reportCard { background: #f8fafc; color: #0f172a; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); margin-top: 20px; border: 2px solid #38bdf8; display: none; }
+    .report-header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
+    .report-title { color: #0284c7; font-size: 1.4rem; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
     
-    /* Pretty Report Formatting */
-    #output { background: #1e293b; padding: 20px; border-radius: 12px; margin-top: 16px; border: 1px solid #38bdf8; color: #f8fafc; font-size: 0.95rem; line-height: 1.6; }
-    #output h2, #output h3 { color: #38bdf8; margin-top: 0; }
-    #output table { width: 100%; border-collapse: collapse; margin: 16px 0; background: #0f172a; border-radius: 8px; overflow: hidden; }
-    #output th { background: #0284c7; color: #ffffff; text-align: left; padding: 10px; font-size: 0.85rem; }
-    #output td { padding: 10px; border-bottom: 1px solid #334155; font-size: 0.85rem; }
-    #output tr:last-child td { border-bottom: none; }
-    #output ol, #output ul { padding-left: 20px; margin: 10px 0; }
-    #output li { margin-bottom: 8px; }
+    .status-banner { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 10px 14px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+    
+    .section-title { font-size: 1rem; font-weight: 800; color: #1e293b; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; border-bottom: 2px solid #0284c7; padding-bottom: 4px; }
+    
+    /* Table Styling */
+    .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.85rem; }
+    .data-table th { background: #e2e8f0; color: #334155; font-weight: bold; text-align: left; padding: 8px; border: 1px solid #cbd5e1; }
+    .data-table td { padding: 8px; border: 1px solid #cbd5e1; font-weight: 600; }
+    
+    /* Dynamic Badges */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; color: #fff; text-align: center; }
+    .badge-ok { background: #10b981; }
+    .badge-warn { background: #f59e0b; }
+    .badge-danger { background: #ef4444; }
+
+    /* Action Plan Number Bubbles */
+    .action-step { display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start; }
+    .step-number { background: #0284c7; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; font-size: 0.9rem; }
+    .step-content { font-size: 0.85rem; line-height: 1.4; color: #334155; }
+    .step-title { font-weight: bold; color: #0284c7; text-transform: uppercase; font-size: 0.9rem; }
 
     .affiliate-section { margin-top: 20px; text-align: center; }
     .buy-btn { display: inline-block; background: #f59e0b; color: #000; text-decoration: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; margin: 6px 0; }
@@ -42,7 +57,30 @@
     <button id="analyzeBtn" onclick="analyzeStrip()">Analyze Test Strip</button>
   </div>
 
-  <div id="output" style="display:none;"></div>
+  <!-- Graphical Infographic Container -->
+  <div id="reportCard">
+    <div class="report-header">
+      <h2 class="report-title">💧 SPA WATER ANALYSIS REPORT</h2>
+    </div>
+
+    <div id="statusBanner" class="status-banner">⚠️ STATUS: ANALYZING...</div>
+
+    <div class="section-title">📊 Reading Breakdown</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>PARAMETER</th>
+          <th>READING</th>
+          <th>STATUS</th>
+          <th>IDEAL RANGE</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+
+    <div class="section-title">🛠️ Priority Action Plan</div>
+    <div id="actionPlan"></div>
+  </div>
 
   <div class="card affiliate-section">
     <h3>Chemical Reordering</h3>
@@ -55,7 +93,7 @@
     async function analyzeStrip() {
       const apiKey = document.getElementById('apiKey').value.trim();
       const fileInput = document.getElementById('imageInput');
-      const outputDiv = document.getElementById('output');
+      const reportCard = document.getElementById('reportCard');
       const btn = document.getElementById('analyzeBtn');
 
       if (!apiKey) { alert('Please enter your API Key.'); return; }
@@ -63,42 +101,36 @@
 
       btn.disabled = true;
       btn.innerText = 'Analyzing Image...';
-      outputDiv.style.display = 'block';
-      outputDiv.innerHTML = '<em>Processing visual data with Gemini...</em>';
+      reportCard.style.display = 'none';
 
       const file = fileInput.files[0];
       const base64Image = await convertToBase64(file);
 
-      const systemPrompt = `Analyze the uploaded image of a spa water test strip against a standard color chart.
-Rules:
-1. Ignore any Bromine pads/readings entirely; the spa uses Chlorine.
-2. Base all values strictly on visual pad color comparisons.
-3. Generate the report using markdown:
-
-### SPA WATER ANALYSIS REPORT
-**STATUS:** [OVERALL STATUS SUMMARY]
-
-#### READING BREAKDOWN
-| PARAMETER | READING | STATUS | IDEAL RANGE |
-| :--- | :--- | :--- | :--- |
-| Total Hardness | [Value] ppm | [Status] | 150–250 ppm |
-| Free Chlorine | [Value] ppm | [Status] | 3.0–5.0 ppm |
-| Total Chlorine | [Value] ppm | [Status] | Matches Free Chlorine |
-| Cyanuric Acid | [Value] ppm | [Status] | 30–50 ppm |
-| Total Alkalinity | [Value] ppm | [Status] | 80–120 ppm |
-| pH Level | [Value] | [Status] | 7.2–7.8 |
-
-#### PRIORITY ACTION PLAN
-1. **[STEP 1 TITLE]** - [Details/Dosing]
-2. **[STEP 2 TITLE]** - [Details/Dosing]
-3. **[STEP 3 TITLE]** - [Details/Dosing]`;
+      const systemPrompt = `Analyze the uploaded spa water test strip photo. Respond strictly in valid JSON format without markdown code fences.
+Return JSON with this exact schema:
+{
+  "status": "STATUS SUMMARY HERE",
+  "readings": [
+    {"parameter": "Total Hardness", "reading": "250 ppm", "status": "OK", "ideal": "150–250 ppm"},
+    {"parameter": "Free Chlorine", "reading": "10.0 ppm", "status": "HIGH", "ideal": "3.0–5.0 ppm"},
+    {"parameter": "Total Chlorine", "reading": "10.0 ppm", "status": "HIGH", "ideal": "Matches Free"},
+    {"parameter": "Cyanuric Acid", "reading": "0 ppm", "status": "LOW", "ideal": "30–50 ppm"},
+    {"parameter": "Total Alkalinity", "reading": "40 ppm", "status": "LOW", "ideal": "80–120 ppm"},
+    {"parameter": "pH Level", "reading": "6.8", "status": "LOW", "ideal": "7.2–7.8"}
+  ],
+  "actions": [
+    {"title": "LOWER CHLORINE", "detail": "Details here..."},
+    {"title": "RAISE ALKALINITY", "detail": "Details here..."},
+    {"title": "ADJUST PH LEVEL", "detail": "Details here..."}
+  ]
+}`;
 
       const payload = {
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{
           parts: [
             { inline_data: { mime_type: file.type, data: base64Image } },
-            { text: "Generate the spa water analysis report for this test strip." }
+            { text: "Analyze this strip and return JSON." }
           ]
         }]
       };
@@ -111,18 +143,52 @@ Rules:
         });
 
         const data = await response.json();
-        if (data.candidates && data.candidates[0].content.parts[0].text) {
-          const rawMarkdown = data.candidates[0].content.parts[0].text;
-          outputDiv.innerHTML = marked.parse(rawMarkdown);
-        } else {
-          outputDiv.innerText = 'Error: Unexpected response format.\n' + JSON.stringify(data, null, 2);
-        }
+        let rawText = data.candidates[0].content.parts[0].text;
+        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(rawText);
+
+        renderGraphicalReport(parsed);
       } catch (err) {
-        outputDiv.innerText = 'Request Failed: ' + err.message;
+        alert('Analysis Error: ' + err.message);
       } finally {
         btn.disabled = false;
         btn.innerText = 'Analyze Test Strip';
       }
+    }
+
+    function renderGraphicalReport(data) {
+      document.getElementById('statusBanner').innerText = '⚠️ STATUS: ' + data.status;
+
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      data.readings.forEach(item => {
+        let badgeClass = 'badge-ok';
+        if (item.status.includes('HIGH') || item.status.includes('UNSAFE') || item.status.includes('VERY LOW')) badgeClass = 'badge-danger';
+        else if (item.status.includes('LOW') || item.status.includes('WARN')) badgeClass = 'badge-warn';
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${item.parameter}</td>
+            <td>${item.reading}</td>
+            <td><span class="badge ${badgeClass}">${item.status}</span></td>
+            <td>${item.ideal}</td>
+          </tr>`;
+      });
+
+      const actionDiv = document.getElementById('actionPlan');
+      actionDiv.innerHTML = '';
+      data.actions.forEach((act, idx) => {
+        actionDiv.innerHTML += `
+          <div class="action-step">
+            <div class="step-number">${idx + 1}</div>
+            <div class="step-content">
+              <div class="step-title">${act.title}</div>
+              <div>${act.detail}</div>
+            </div>
+          </div>`;
+      });
+
+      document.getElementById('reportCard').style.display = 'block';
     }
 
     function convertToBase64(file) {
