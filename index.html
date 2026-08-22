@@ -15,13 +15,16 @@
     h1 { text-align: center; color: #38bdf8; font-size: 1.5rem; margin-bottom: 20px; }
     .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #334155; }
     
+    label { font-size: 0.9rem; font-weight: bold; color: #cbd5e1; display: block; margin-bottom: 6px; }
+    input[type="number"] { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; box-sizing: border-box; font-size: 1rem; }
+
     /* Photo Selection Options */
     .button-group { display: flex; gap: 10px; margin-bottom: 12px; }
     .photo-btn { flex: 1; padding: 12px; background: #334155; color: white; border: 1px solid #475569; border-radius: 8px; font-size: 0.9rem; font-weight: bold; cursor: pointer; text-align: center; }
     .photo-btn:active { background: #475569; }
     
-    button { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; }
-    button:disabled { background: #64748b; }
+    button.primary-btn { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+    button.primary-btn:disabled { background: #64748b; }
 
     /* Graphical Infographic Card */
     #reportCard { background: #f8fafc; color: #0f172a; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); margin-top: 20px; border: 2px solid #38bdf8; display: none; }
@@ -48,6 +51,10 @@
     .step-number { background: #0284c7; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; font-size: 0.9rem; }
     .step-content { font-size: 0.85rem; line-height: 1.4; color: #334155; }
     .step-title { font-weight: bold; color: #0284c7; text-transform: uppercase; font-size: 0.9rem; }
+    
+    /* Dosage Highlight Box */
+    .dosage-box { background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 12px; margin-bottom: 18px; font-size: 0.85rem; color: #0369a1; }
+    .dosage-box strong { color: #0c4a6e; }
 
     /* Affiliate Section */
     .affiliate-section { margin-top: 20px; text-align: center; }
@@ -61,7 +68,10 @@
   <h1>Spa Water Analyzer</h1>
 
   <div class="card">
-    <label><strong>Capture or Choose Test Strip Photo:</strong></label>
+    <label for="spaGallons">Spa Volume (Gallons):</label>
+    <input type="number" id="spaGallons" value="350" placeholder="e.g. 350, 400, 500" onchange="saveGallons()" />
+
+    <label>Capture or Choose Test Strip Photo:</label>
     <div style="margin-top: 10px;">
       <div class="button-group">
         <button type="button" class="photo-btn" onclick="document.getElementById('cameraInput').click()">📷 Take Photo</button>
@@ -74,7 +84,7 @@
     <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" onchange="handleFileSelect(this)" />
     <input type="file" id="galleryInput" accept="image/*" style="display:none;" onchange="handleFileSelect(this)" />
 
-    <button id="analyzeBtn" onclick="analyzeStrip()">Analyze Test Strip</button>
+    <button id="analyzeBtn" class="primary-btn" onclick="analyzeStrip()">Analyze Test Strip</button>
   </div>
 
   <!-- Graphical Infographic Container -->
@@ -97,6 +107,9 @@
       </thead>
       <tbody id="tableBody"></tbody>
     </table>
+
+    <div class="section-title">⚖️ Estimated Chemical Dosages</div>
+    <div id="dosageSummary" class="dosage-box">Calculating dosage requirements...</div>
 
     <div class="section-title">🛠️ Priority Action Plan</div>
     <div id="actionPlan"></div>
@@ -121,16 +134,24 @@
   </div>
 
   <script>
-    // Embedded Base64 Key
     const ENCODED_KEY = "QVEuQWI4Uk42SlpLX2xHaTVGZWxlZDFtZ1JvU2V3aEN2QV93U3BMNm16V09QdVUtQWJZN1E=";
     let selectedFile = null;
 
-    function getApiKey() {
-      try {
-        return atob(ENCODED_KEY);
-      } catch (e) {
-        return "";
+    // Load saved volume preference on launch
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedGal = localStorage.getItem('spa_volume_gallons');
+      if (savedGal) {
+        document.getElementById('spaGallons').value = savedGal;
       }
+    });
+
+    function saveGallons() {
+      const gallons = document.getElementById('spaGallons').value;
+      localStorage.setItem('spa_volume_gallons', gallons);
+    }
+
+    function getApiKey() {
+      try { return atob(ENCODED_KEY); } catch (e) { return ""; }
     }
 
     function handleFileSelect(input) {
@@ -142,17 +163,12 @@
 
     async function analyzeStrip() {
       const apiKey = getApiKey();
+      const gallons = parseFloat(document.getElementById('spaGallons').value) || 350;
       const reportCard = document.getElementById('reportCard');
       const btn = document.getElementById('analyzeBtn');
 
-      if (!apiKey) {
-        alert('API Key error.');
-        return;
-      }
-      if (!selectedFile) { 
-        alert('Please take a photo or select an image file first.'); 
-        return; 
-      }
+      if (!apiKey) { alert('API Key error.'); return; }
+      if (!selectedFile) { alert('Please take a photo or select an image file first.'); return; }
 
       btn.disabled = true;
       btn.innerText = 'Analyzing Image...';
@@ -160,7 +176,7 @@
 
       const base64Image = await convertToBase64(selectedFile);
 
-      const systemPrompt = `Analyze the uploaded spa water test strip photo. Respond strictly in valid JSON format without markdown code fences.
+      const systemPrompt = `Analyze the uploaded spa water test strip photo for a ${gallons}-gallon spa. Respond strictly in valid JSON format without markdown code fences.
 Return JSON with this exact schema:
 {
   "status": "STATUS SUMMARY HERE",
@@ -171,6 +187,10 @@ Return JSON with this exact schema:
     {"parameter": "Cyanuric Acid", "reading": "0 ppm", "status": "LOW", "ideal": "30–50 ppm"},
     {"parameter": "Total Alkalinity", "reading": "40 ppm", "status": "LOW", "ideal": "80–120 ppm"},
     {"parameter": "pH Level", "reading": "6.8", "status": "LOW", "ideal": "7.2–7.8"}
+  ],
+  "dosage_recommendations": [
+    "Dosage instruction 1 calculated for ${gallons} gallons",
+    "Dosage instruction 2 calculated for ${gallons} gallons"
   ],
   "actions": [
     {"title": "LOWER CHLORINE", "detail": "Details here..."},
@@ -213,6 +233,7 @@ Return JSON with this exact schema:
     function renderGraphicalReport(data) {
       document.getElementById('statusBanner').innerText = '⚠️ STATUS: ' + data.status;
 
+      // Table Rendering
       const tbody = document.getElementById('tableBody');
       tbody.innerHTML = '';
       data.readings.forEach(item => {
@@ -229,6 +250,15 @@ Return JSON with this exact schema:
           </tr>`;
       });
 
+      // Dosage Summary Rendering
+      const dosageDiv = document.getElementById('dosageSummary');
+      if (data.dosage_recommendations && data.dosage_recommendations.length > 0) {
+        dosageDiv.innerHTML = data.dosage_recommendations.map(d => `• <strong>${d}</strong>`).join('<br>');
+      } else {
+        dosageDiv.innerHTML = "• <strong>No immediate chemical additions required based on current levels.</strong>";
+      }
+
+      // Action Plan Rendering
       const actionDiv = document.getElementById('actionPlan');
       actionDiv.innerHTML = '';
       data.actions.forEach((act, idx) => {
