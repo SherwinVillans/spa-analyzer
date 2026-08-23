@@ -19,12 +19,20 @@
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; margin: 0; }
     h1 { text-align: center; color: #38bdf8; font-size: 1.5rem; margin-bottom: 2px; }
-    .subtitle { text-align: center; color: #94a3b8; font-size: 0.8rem; margin-bottom: 20px; font-weight: normal; }
+    .subtitle { text-align: center; color: #94a3b8; font-size: 0.8rem; margin-bottom: 16px; font-weight: normal; }
     
+    /* Navigation Tabs */
+    .nav-tabs { display: flex; background: #1e293b; border-radius: 10px; padding: 4px; border: 1px solid #334155; margin-bottom: 20px; }
+    .tab-btn { flex: 1; padding: 10px; background: none; border: none; color: #94a3b8; font-weight: bold; font-size: 0.9rem; border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s; }
+    .tab-btn.active { background: #0284c7; color: #ffffff; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
     .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #334155; }
     
     label { font-size: 0.9rem; font-weight: bold; color: #cbd5e1; display: block; margin-bottom: 6px; }
-    input[type="number"] { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; box-sizing: border-box; font-size: 1rem; }
+    input[type="number"], input[type="date"] { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; box-sizing: border-box; font-size: 1rem; }
 
     /* Photo Selection Options */
     .button-group { display: flex; gap: 10px; margin-bottom: 12px; }
@@ -35,6 +43,7 @@
     button.primary-btn:disabled { background: #64748b; }
     button.trend-btn { width: 100%; padding: 12px; background: #8b5cf6; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin-top: 8px; }
     button.share-btn { width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin-top: 16px; }
+    button.action-btn-sm { padding: 8px 12px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer; margin-top: 6px; }
 
     /* Loading Spinner & Status Animation */
     #loadingCard { display: none; text-align: center; padding: 24px 16px; background: #1e293b; border-radius: 12px; border: 1px solid #0284c7; margin-bottom: 16px; }
@@ -120,6 +129,11 @@
     .affiliate-section { margin-top: 20px; text-align: center; }
     .buy-btn-primary { display: block; width: 100%; box-sizing: border-box; background: #f59e0b; color: #000; text-decoration: none; padding: 14px 16px; border-radius: 8px; font-weight: bold; margin: 12px 0 8px 0; font-size: 1rem; text-align: center; }
     .disclosure { font-size: 0.75rem; color: #94a3b8; margin-top: 8px; }
+
+    /* Tracker Stat Box */
+    .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #334155; }
+    .stat-label { font-size: 0.9rem; font-weight: 600; color: #cbd5e1; }
+    .stat-val { font-size: 1.1rem; font-weight: 800; color: #38bdf8; }
   </style>
 </head>
 <body>
@@ -127,25 +141,125 @@
   <h1>Spa Water Analyzer</h1>
   <div class="subtitle">A Troy Goldman Project</div>
 
-  <div class="card">
-    <label for="spaGallons">Spa Volume (Gallons):</label>
-    <input type="number" id="spaGallons" value="350" placeholder="e.g. 350, 400, 500" onchange="saveGallons()" />
+  <!-- Navigation Tab Bar -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('analyzerTab')">🧪 Water Analyzer</button>
+    <button class="tab-btn" onclick="switchTab('maintenanceTab')">🛠️ Maintenance Log</button>
+  </div>
 
-    <label>Capture or Choose Test Strip Photo:</label>
-    <div style="margin-top: 10px;">
-      <div class="button-group">
-        <button type="button" class="photo-btn" onclick="openCameraOverlay()">📷 Take Photo</button>
-        <button type="button" class="photo-btn" onclick="document.getElementById('galleryInput').click()">🖼️ Choose File</button>
+  <!-- TAB 1: WATER ANALYZER -->
+  <div id="analyzerTab" class="tab-content active">
+    <div class="card">
+      <label for="spaGallons">Spa Volume (Gallons):</label>
+      <input type="number" id="spaGallons" value="350" placeholder="e.g. 350, 400, 500" onchange="saveGallons()" />
+
+      <label>Capture or Choose Test Strip Photo:</label>
+      <div style="margin-top: 10px;">
+        <div class="button-group">
+          <button type="button" class="photo-btn" onclick="openCameraOverlay()">📷 Take Photo</button>
+          <button type="button" class="photo-btn" onclick="document.getElementById('galleryInput').click()">🖼️ Choose File</button>
+        </div>
+        <div id="fileStatus" style="font-size:0.85rem; color:#94a3b8; margin-bottom:12px; text-align:center;">No photo selected</div>
       </div>
-      <div id="fileStatus" style="font-size:0.85rem; color:#94a3b8; margin-bottom:12px; text-align:center;">No photo selected</div>
+
+      <!-- Hidden Gallery Input & Canvas -->
+      <input type="file" id="galleryInput" accept="image/*" style="display:none;" onchange="handleFileSelect(this)" />
+      <canvas id="captureCanvas" style="display:none;"></canvas>
+
+      <button id="analyzeBtn" class="primary-btn" onclick="analyzeStrip()">Analyze Test Strip</button>
+      <button class="trend-btn" onclick="toggleTrendPanel(true)">📈 View 5-Test Trend Graph</button>
     </div>
 
-    <!-- Hidden Gallery Input & Canvas -->
-    <input type="file" id="galleryInput" accept="image/*" style="display:none;" onchange="handleFileSelect(this)" />
-    <canvas id="captureCanvas" style="display:none;"></canvas>
+    <!-- Animated Loading Card -->
+    <div id="loadingCard">
+      <div class="spinner"></div>
+      <div id="loadingText" class="loading-text">Analyzing photo...</div>
+    </div>
 
-    <button id="analyzeBtn" class="primary-btn" onclick="analyzeStrip()">Analyze Test Strip</button>
-    <button class="trend-btn" onclick="toggleTrendPanel(true)">📈 View 5-Test Trend Graph</button>
+    <!-- Graphical Infographic Container -->
+    <div id="reportCard">
+      <div class="report-header">
+        <h2 class="report-title">💧 SPA WATER ANALYSIS REPORT</h2>
+        <div id="reportTimestamp" class="report-timestamp">Generated: --</div>
+      </div>
+
+      <div id="statusBanner" class="status-banner">⚠️ STATUS: ANALYZING...</div>
+
+      <div class="section-title">📊 Reading Breakdown</div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>PARAMETER</th>
+            <th>READING</th>
+            <th>STATUS</th>
+            <th>IDEAL RANGE</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+
+      <div class="section-title">⚖️ SpaGuard® Chemical Dosages</div>
+      <div id="dosageSummary" class="dosage-box">Calculating dosage requirements...</div>
+
+      <div class="section-title">🛠️ Priority Action Plan</div>
+      <div id="actionPlan"></div>
+
+      <div class="report-copyright">
+        © <span id="copyrightYear"></span> Troy Goldman. All rights reserved.
+      </div>
+
+      <button id="shareBtn" class="share-btn" onclick="shareReportImage()">🖼️ Share Report Image</button>
+    </div>
+
+    <!-- Direct Amazon SpaGuard Search Section -->
+    <div class="card affiliate-section">
+      <h3>🛒 Reorder SpaGuard Supplies</h3>
+      <p style="font-size:0.85rem; color:#cbd5e1; margin-bottom:8px;">Order professional-grade SpaGuard chemicals directly on Amazon:</p>
+      
+      <a href="https://www.amazon.com/s?k=spaguard+spa+products&tag=fastchem-20" class="buy-btn-primary" target="_blank">
+        🛍️ Shop SpaGuard Products on Amazon
+      </a>
+      
+      <p class="disclosure">As an Amazon Associate, this app earns from qualifying purchases.</p>
+    </div>
+  </div>
+
+  <!-- TAB 2: MAINTENANCE TRACKER -->
+  <div id="maintenanceTab" class="tab-content">
+    <div class="card">
+      <h3 style="color:#38bdf8; margin-top:0;">🧼 Filter Maintenance Tracker</h3>
+      <div class="stat-row">
+        <div>
+          <div class="stat-label">Last Quick Rinse</div>
+          <div id="rinseDaysText" class="stat-val">-- days ago</div>
+        </div>
+        <button class="action-btn-sm" onclick="recordMaintenance('rinse')">Rinsed Today</button>
+      </div>
+
+      <div class="stat-row">
+        <div>
+          <div class="stat-label">Last Chemical Soak</div>
+          <div id="soakDaysText" class="stat-val">-- days ago</div>
+        </div>
+        <button class="action-btn-sm" onclick="recordMaintenance('soak')">Soaked Today</button>
+      </div>
+
+      <a href="https://www.amazon.com/s?k=spaguard+filter+cleaner&tag=fastchem-20" target="_blank" class="contextual-buy-btn" style="width:100%; box-sizing:border-box;">🛒 Order SpaGuard Filter Cleaner</a>
+    </div>
+
+    <div class="card">
+      <h3 style="color:#38bdf8; margin-top:0;">🌊 Water Drain & Refill Tracker</h3>
+      <div class="stat-row">
+        <div>
+          <div class="stat-label">Current Water Age</div>
+          <div id="refillDaysText" class="stat-val">-- days old</div>
+        </div>
+        <button class="action-btn-sm" onclick="recordMaintenance('refill')">Refilled Today</button>
+      </div>
+      <p style="font-size:0.8rem; color:#94a3b8; margin-top:6px;">Recommended: Drain and refill spa water every 90 to 120 days for optimal clarity and chemical efficiency.</p>
+
+      <a href="https://www.amazon.com/s?k=spaguard+system+flush&tag=fastchem-20" target="_blank" class="contextual-buy-btn" style="width:100%; box-sizing:border-box;">🛒 Order SpaGuard System Flush</a>
+    </div>
   </div>
 
   <!-- Live Camera Modal with Dual Alignment Viewfinder Overlay -->
@@ -163,12 +277,6 @@
     </div>
   </div>
 
-  <!-- Animated Loading Card -->
-  <div id="loadingCard">
-    <div class="spinner"></div>
-    <div id="loadingText" class="loading-text">Analyzing photo...</div>
-  </div>
-
   <!-- Slide-In Overlay & Panel -->
   <div id="panelOverlay" class="panel-overlay" onclick="toggleTrendPanel(false)"></div>
   <div id="trendPanel" class="slide-panel">
@@ -179,53 +287,6 @@
     <div style="background:#0f172a; padding:12px; border-radius:10px; margin-top:16px;">
       <canvas id="trendChart"></canvas>
     </div>
-  </div>
-
-  <!-- Graphical Infographic Container -->
-  <div id="reportCard">
-    <div class="report-header">
-      <h2 class="report-title">💧 SPA WATER ANALYSIS REPORT</h2>
-      <div id="reportTimestamp" class="report-timestamp">Generated: --</div>
-    </div>
-
-    <div id="statusBanner" class="status-banner">⚠️ STATUS: ANALYZING...</div>
-
-    <div class="section-title">📊 Reading Breakdown</div>
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>PARAMETER</th>
-          <th>READING</th>
-          <th>STATUS</th>
-          <th>IDEAL RANGE</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-
-    <div class="section-title">⚖️ SpaGuard® Chemical Dosages</div>
-    <div id="dosageSummary" class="dosage-box">Calculating dosage requirements...</div>
-
-    <div class="section-title">🛠️ Priority Action Plan</div>
-    <div id="actionPlan"></div>
-
-    <div class="report-copyright">
-      © <span id="copyrightYear"></span> Troy Goldman. All rights reserved.
-    </div>
-
-    <button id="shareBtn" class="share-btn" onclick="shareReportImage()">🖼️ Share Report Image</button>
-  </div>
-
-  <!-- Direct Amazon SpaGuard Search Section -->
-  <div class="card affiliate-section">
-    <h3>🛒 Reorder SpaGuard Supplies</h3>
-    <p style="font-size:0.85rem; color:#cbd5e1; margin-bottom:8px;">Order professional-grade SpaGuard chemicals directly on Amazon:</p>
-    
-    <a href="https://www.amazon.com/s?k=spaguard+spa+products&tag=fastchem-20" class="buy-btn-primary" target="_blank">
-      🛍️ Shop SpaGuard Products on Amazon
-    </a>
-    
-    <p class="disclosure">As an Amazon Associate, this app earns from qualifying purchases.</p>
   </div>
 
   <script>
@@ -241,6 +302,7 @@
         document.getElementById('spaGallons').value = savedGal;
       }
       document.getElementById('copyrightYear').innerText = new Date().getFullYear();
+      loadMaintenanceStats();
     });
 
     function saveGallons() {
@@ -250,6 +312,42 @@
 
     function getApiKey() {
       try { return atob(ENCODED_KEY); } catch (e) { return ""; }
+    }
+
+    /* Tab Switching Logic */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      if (tabId === 'analyzerTab') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        loadMaintenanceStats();
+      }
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    /* Maintenance Tracker Storage & Calculation Logic */
+    function recordMaintenance(type) {
+      const today = new Date().toISOString();
+      localStorage.setItem(`spa_last_${type}`, today);
+      loadMaintenanceStats();
+    }
+
+    function loadMaintenanceStats() {
+      const now = new Date();
+      
+      const getDaysAgo = (key) => {
+        const stored = localStorage.getItem(key);
+        if (!stored) return 'No log recorded';
+        const diffDays = Math.floor((now - new Date(stored)) / (1000 * 60 * 60 * 24));
+        return diffDays === 0 ? 'Today' : `${diffDays} days ago`;
+      };
+
+      document.getElementById('rinseDaysText').innerText = getDaysAgo('spa_last_rinse');
+      document.getElementById('soakDaysText').innerText = getDaysAgo('spa_last_soak');
+      document.getElementById('refillDaysText').innerText = getDaysAgo('spa_last_refill');
     }
 
     function handleFileSelect(input) {
@@ -328,7 +426,6 @@
       document.getElementById('loadingCard').style.display = 'none';
     }
 
-    // Failover request helper cycling through valid, active Flash endpoints (3.7 -> 3.6 -> 1.5)
     async function executeApiRequestWithFailover(payload, apiKey) {
       const models = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-1.5-flash'];
       let lastErrorMessage = '';
@@ -513,7 +610,6 @@ When making recommendations, strictly use official SpaGuard product names and pr
       });
     }
 
-    // Dynamic Amazon Product Link Helper
     function getContextualAmazonLink(productQuery) {
       const encoded = encodeURIComponent(productQuery);
       return `https://www.amazon.com/s?k=${encoded}&tag=fastchem-20`;
