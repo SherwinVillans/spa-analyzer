@@ -328,6 +328,35 @@
       document.getElementById('loadingCard').style.display = 'none';
     }
 
+    // Failover request helper cycling through valid, active Flash endpoints (3.7 -> 3.6 -> 1.5)
+    async function executeApiRequestWithFailover(payload, apiKey) {
+      const models = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-1.5-flash'];
+      let lastErrorMessage = '';
+
+      for (const model of models) {
+        try {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await response.json();
+
+          if (!data.error && data.candidates && data.candidates[0] && data.candidates[0].content) {
+            return data;
+          }
+
+          if (data.error) {
+            lastErrorMessage = data.error.message;
+          }
+        } catch (e) {
+          lastErrorMessage = e.message;
+        }
+      }
+      throw new Error(lastErrorMessage || 'Service busy across all model endpoints. Please try again.');
+    }
+
     async function analyzeStrip() {
       const apiKey = getApiKey();
       const gallons = parseFloat(document.getElementById('spaGallons').value) || 350;
@@ -401,22 +430,7 @@ When making recommendations, strictly use official SpaGuard product names and pr
       };
 
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-          throw new Error(data.error.message || 'API request error occurred.');
-        }
-
-        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-          throw new Error('Invalid response received from API.');
-        }
-
+        const data = await executeApiRequestWithFailover(payload, apiKey);
         const rawText = data.candidates[0].content.parts[0].text;
         const parsed = JSON.parse(rawText);
 
@@ -535,7 +549,6 @@ When making recommendations, strictly use official SpaGuard product names and pr
         let dosageHtml = '';
         data.dosage_recommendations.forEach(d => {
           dosageHtml += `• <strong>${d}</strong><br>`;
-          // Dynamically attach specific affiliate buy button when a product is mentioned
           if (d.includes('pH Increaser')) {
             dosageHtml += `<a href="${getContextualAmazonLink('SpaGuard pH Increaser')}" target="_blank" class="contextual-buy-btn">🛒 Buy SpaGuard pH Increaser</a><br><br>`;
           } else if (d.includes('pH Decreaser')) {
